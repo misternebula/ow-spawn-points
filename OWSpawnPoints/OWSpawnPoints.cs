@@ -24,6 +24,21 @@ namespace OWSpawnPoints
             if (behaviour.GetType() == typeof(Flashlight) && ev == Events.AfterStart)
             {
                 Init();
+
+                Type[] explodableTypes = new[]
+                {
+                    typeof(AnglerfishController),
+                    typeof(JellyfishController)
+                };
+
+                foreach (var explodableType in explodableTypes)
+                {
+                    var anglers = FindObjectsOfType(explodableType);
+                    foreach (var angler in anglers)
+                    {
+                        ((MonoBehaviour)angler).gameObject.AddComponent<Explodable>();
+                    }
+                }
             }
         }
 
