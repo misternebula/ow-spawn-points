@@ -25,20 +25,19 @@ namespace OWSpawnPoints
             {
                 Init();
 
-                Type[] explodableTypes = new[]
-                {
-                    typeof(AnglerfishController),
-                    typeof(JellyfishController)
-                };
+                var probeKill = new GameObject().transform;
+                probeKill.position = Locator.GetProbe().transform.position;
+                probeKill.localRotation = Locator.GetProbe().transform.rotation;
 
-                foreach (var explodableType in explodableTypes)
-                {
-                    var anglers = FindObjectsOfType(explodableType);
-                    foreach (var angler in anglers)
-                    {
-                        ((MonoBehaviour)angler).gameObject.AddComponent<Explodable>();
-                    }
-                }
+                var probeKillCollider = probeKill.gameObject.AddComponent<SphereCollider>();
+                probeKillCollider.radius = 1f;
+                probeKill.gameObject.layer = LayerMask.NameToLayer("Primitive");
+                probeKill.gameObject.AddComponent<Rigidbody>();
+
+                Physics.IgnoreCollision(probeKillCollider, Locator.GetProbe().transform.Find("ProbeCollider").gameObject.GetComponent<SphereCollider>());
+                Physics.IgnoreCollision(probeKillCollider, Locator.GetPlayerCollider());
+
+                probeKill.gameObject.AddComponent<Explodable>();
             }
         }
 
