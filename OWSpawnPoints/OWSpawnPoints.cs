@@ -6,6 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OWML.Common.Menus;
+using System.Net.Sockets;
+using System.IO;
+using System.Text;
+using System.Net;
 
 namespace OWSpawnPoints
 {
@@ -17,15 +21,92 @@ namespace OWSpawnPoints
         SaveFile _saveFile;
         bool _isSolarSystemLoaded;
         const string SAVE_FILE = "savefile.json";
+        Socket _socket;
+
+        private void SocketState_Completed(object sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                throw new SocketException((int)e.SocketError);
+            }
+
+            switch (e.LastOperation)
+            {
+                case SocketAsyncOperation.Connect:
+                    ProcessConnect(e);
+                    break;
+                case SocketAsyncOperation.Receive:
+                    ProcessReceive(e);
+                    break;
+                case SocketAsyncOperation.Send:
+                    ProcessSend(e);
+                    break;
+                default:
+                    throw new Exception("Invalid operation completed.");
+            }
+        }
+
+        private void ProcessConnect(SocketAsyncEventArgs e)
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes("Hello World");
+            e.SetBuffer(buffer, 0, buffer.Length);
+            bool willRaiseEvent = _socket.SendAsync(e);
+            if (!willRaiseEvent)
+            {
+                ProcessSend(e);
+            }
+        }
+
+        // Called when a ReceiveAsync operation completes
+        private void ProcessReceive(SocketAsyncEventArgs e)
+        {
+            string message = Encoding.UTF8.GetString(e.Buffer, 0, e.Buffer.Length);
+        }
+
+        // Called when a SendAsync operation completes
+        private void ProcessSend(SocketAsyncEventArgs e)
+        {
+            bool willRaiseEvent = _socket.ReceiveAsync(e);
+            if (!willRaiseEvent)
+            {
+                ProcessReceive(e);
+            }
+        }
 
         private void Start()
         {
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            IPAddress ipAdd = IPAddress.Parse("127.0.0.1");
+            IPEndPoint remoteEP = new IPEndPoint(ipAdd, 1234);
+            _socket.Connect(remoteEP);
+
+            byte[] byData = Encoding.ASCII.GetBytes("Connecting");
+            _socket.Send(byData);
+
             ModHelper.Events.Subscribe<Flashlight>(Events.AfterStart);
             ModHelper.Events.OnEvent += OnEvent;
 
             _saveFile = ModHelper.Storage.Load<SaveFile>(SAVE_FILE);
 
             LoadManager.OnCompleteSceneLoad += OnSceneLoaded;
+            Console.OpenStandardInput();
+            Console.OpenStandardOutput();
+            Console.WriteLine("hello " + count++);
+            Console.Out.Flush();
+            InvokeRepeating("Print", 1, 1);
+        }
+
+        int count = 0;
+        void Print()
+        {
+            ModHelper.Console.WriteLine("hello mod " + count);
+            Debug.Log("DEBUG LOG " + count);
+            Console.Out.WriteLine("outerino");
+            Console.WriteLine("hello " + count++);
+            Console.Out.Flush();
+            Console.Out.Close();
+            byte[] byData = Encoding.ASCII.GetBytes("Hello mother fucker");
+            _socket.Send(byData);
         }
 
         void OnSceneLoaded(OWScene originalScene, OWScene scene)
